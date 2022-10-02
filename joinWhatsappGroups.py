@@ -12,8 +12,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 
 # encoding=utf8 
-reload(sys)  
-sys.setdefaultencoding('utf8')
+# reload(sys)  
+# sys.setdefaultencoding('utf8')
  
 
 directory = "group_data_html/";
@@ -23,8 +23,8 @@ if not os.path.exists(directory):
 # Replace below path with the absolute path
 # to chromedriver in your computer
 
-driver = webdriver.Chrome();
-#driver = webdriver.Firefox(executable_path='/Users/kgarimella/Downloads/geckodriver');
+#driver = webdriver.Chrome();
+driver = webdriver.Firefox()
 driver.set_page_load_timeout(15) 
  
 filename = sys.argv[1];
@@ -37,41 +37,53 @@ wait = WebDriverWait(driver, 600)
 
 time.sleep(15); # sleep for some time while I use my phone to scan the QR code
 
+SLEEP_RANGE = (15,20)
+
 for line in lines:
     line = line.strip().strip("/");
     group_id = line.split("/")[-1];
-    print >> sys.stderr, "processing", line;
+    print("processing", line, file=sys.stderr)
     driver.get(line);
 #    try:
     for i in range(1,2):
-        join_button = driver.find_element_by_css_selector("#action-button");
-        print >> sys.stderr, "clicked join button", group_id;
+        join_button = driver.find_element(By.CSS_SELECTOR, "#action-button");
         join_button.click();
-#        if(count==1):
-#            time.sleep(50); # sleep first time for some time to allow for scanning the qr code
-#            count += 1;
-#        else:
-#            sleep_time = random.randint(9,10);
-#            print >> sys.stderr, "sleeping for", sleep_time;
-#            time.sleep(sleep_time); # allow time for page to load
-        sleep_time = random.randint(20,30);
+        print("clicked join button", group_id, file=sys.stderr)
+        sleep_time = random.randint(*SLEEP_RANGE);
+        print("sleeping for", sleep_time, file=sys.stderr)
         time.sleep(sleep_time); # allow time for page to load
-        print >> sys.stderr, "sleeping for", sleep_time;
-#        group_info = WebDriverWait(driver, sleep_time).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".popup-body")));
-        group_info = driver.find_element_by_css_selector(".popup-body");
-        out = open(directory + "/" + group_id,"w");
-        print >> sys.stderr, "saving info";
+        # continue_link = driver.find_element(
+        #     By.CSS_SELECTOR,
+        #     'a[href="https://chat.whatsapp.com/accept?code={group_id}"]'.format(group_id=group_id))
+        # continue_link.click()
+        use_whatsapp_web = driver.find_element(By.PARTIAL_LINK_TEXT, "use WhatsApp Web")
+        use_whatsapp_web.click()
+        print("clicked 'use WhatsApp Web' button", group_id, file=sys.stderr)
+        sleep_time = random.randint(*SLEEP_RANGE);
+        print("sleeping for", sleep_time, file=sys.stderr)
+        time.sleep(sleep_time); # allow time for page to load
+        group_info = driver.find_elements(By.CSS_SELECTOR, "div[data-testid='popup-contents']");
+        if not len(group_info):
+            print("Unable to find group info")
+
+            continue
+        else:
+            group_info = group_info[0]
+
+        out = open(directory + "/" + group_id + ".html","w");
+        print("saving info", file=sys.stderr)
         out.write(group_info.get_attribute('innerHTML') + "\n");
         out.close();
-#        join_group_button = WebDriverWait(driver, sleep_time).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".btn-plain.btn-default.popup-controls-item")));
-        join_group_button = driver.find_element_by_css_selector(".btn-plain.btn-default.popup-controls-item");
-        print >> sys.stderr, "joined group", group_id;
-#        if(not 
-#        try:join_group_button.find_element_by_xpath("//*[contains(text(), 'Retry Now')]")):
-        join_group_button.click();
+        join_group_buttons = driver.find_elements(By.CSS_SELECTOR, "div[data-testid='popup-controls-ok']");
 
-#    except:
-#        print >> sys.stderr, "unable to join group", line;
-#        pass;
+        if not len(join_group_buttons):
+            print("Unable to find 'Join Group' button")
+
+            continue
+        else:
+            join_group_button = join_group_buttons[0]
+        join_group_button.click()
+        print ("joined group" + group_id, file=sys.stderr)
+
 
 driver.close();
